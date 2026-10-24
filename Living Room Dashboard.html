@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Living Room Dashboard</title>
+<style>
+:root{--bg1:#0b1020;--bg2:#1b1440;--fg:#f4f6ff;--mute:#8d96c0;--card:rgba(255,255,255,.07);--acc:#7cc4ff;--acc2:#ffb86b;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark}}
+:root[data-theme="dark"]{color-scheme:dark}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:radial-gradient(120% 120% at 20% 0%,var(--bg2),var(--bg1) 60%);color:var(--fg);font-family:"Inter","Helvetica Neue",Arial,sans-serif;overflow:hidden;transition:background 2s}
+#wrap{height:100%;padding:4vh 4vw;display:grid;grid-template-columns:1.2fr 1fr;grid-template-rows:1fr auto;gap:3vh 3vw;animation:drift 600s ease-in-out infinite alternate}
+@keyframes drift{from{transform:translate(-.6vw,-.6vh)}to{transform:translate(.6vw,.6vh)}}
+.card{background:var(--card);border-radius:2vw;padding:3vh 2.5vw}
+#clock{grid-row:1/2;display:flex;flex-direction:column;justify-content:center}
+#time{font-size:min(17vw,30vh);font-weight:200;letter-spacing:-.04em;line-height:1}
+#time span{font-size:.28em;color:var(--acc);margin-left:.2em;font-weight:300}
+#date{font-size:min(3.4vw,6vh);color:var(--mute);margin-top:2vh}
+#greet{font-size:min(2.4vw,4.2vh);color:var(--acc2);margin-top:1.5vh}
+#cal h2{font-size:min(2.6vw,4.6vh);font-weight:400;margin-bottom:2vh;display:flex;justify-content:space-between}
+#grid{display:grid;grid-template-columns:repeat(7,1fr);gap:.6vh .4vw;text-align:center;font-size:min(1.9vw,3.4vh)}
+#grid .h{color:var(--mute);font-size:.7em;padding-bottom:1vh}
+#grid .d{padding:.9vh 0;border-radius:50%;aspect-ratio:1;display:flex;align-items:center;justify-content:center}
+#grid .o{color:#4b5380}
+#grid .t{background:var(--acc);color:#06101f;font-weight:600}
+#wx{grid-column:1/3;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+#wx .big{font-size:min(8vw,14vh);font-weight:200;line-height:1}
+#wx .ic{font-size:min(8vw,14vh)}
+#wx .meta{font-size:min(2.2vw,4vh);color:var(--mute);text-align:right;line-height:1.5}
+#wx .mid{font-size:min(3vw,5.4vh)}
+#hint{position:fixed;right:2vw;bottom:1vh;font-size:1.4vh;color:#4b5380}
+</style>
+</head>
+<body>
+<div id="dim" style="position:fixed;inset:0;background:#000;pointer-events:none;opacity:0;transition:opacity 3s"></div>
+<div id="wrap">
+  <div id="clock" class="card">
+    <div id="time"></div>
+    <div id="date"></div>
+    <div id="greet"></div>
+  </div>
+  <div id="cal" class="card"><h2><span id="mon"></span><span id="yr" style="color:var(--mute)"></span></h2><div id="grid"></div></div>
+  <div id="wx" class="card" title="Press Enter / click to edit weather">
+    <div style="display:flex;align-items:center;gap:2vw"><div class="ic" id="wic">⛅</div><div class="big" id="wt">--°</div></div>
+    <div class="mid" id="wc">Partly cloudy</div>
+    <div class="meta" id="wm">Johannesburg<br>H 0° · L 0°</div>
+  </div>
+</div>
+<div id="hint">Remote: ▲▼ temperature · ◀▶ conditions · Enter = full edit</div>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var W={temp:24,cond:"Partly cloudy",icon:"⛅",hi:27,lo:14,city:"Johannesburg"};
+try{var s=localStorage.getItem("tvwx");if(s)W=Object.assign(W,JSON.parse(s))}catch(e){}
+function pad(n){return n<10?"0"+n:""+n}
+function renderWx(){
+  $("wt").textContent=W.temp+"°";$("wc").textContent=W.cond;$("wic").textContent=W.icon;
+  $("wm").innerHTML=W.city+"<br>H "+W.hi+"° · L "+W.lo+"°";
+}
+function tick(){
+  var d=new Date(),h=d.getHours();
+  var h12=h%12||12;
+  $("time").innerHTML=h12+":"+pad(d.getMinutes())+"<span>"+(h<12?"AM":"PM")+"</span>";
+  $("date").textContent=d.toLocaleDateString("en-ZA",{weekday:"long",day:"numeric",month:"long"});
+  $("greet").textContent=h<5?"Burning the midnight oil":h<12?"Good morning":h<18?"Good afternoon":"Good evening";
+  $("mon").textContent=d.toLocaleDateString("en-ZA",{month:"long"});
+  $("yr").textContent=d.getFullYear();
+  $("dim").style.opacity=(h>=22||h<5)?"0.55":"0";
+}
+function cal(){
+  var d=new Date(),y=d.getFullYear(),m=d.getMonth(),g=$("grid"),out="";
+  ["M","T","W","T","F","S","S"].forEach(function(x){out+='<div class="h">'+x+'</div>'});
+  var first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate(),prev=new Date(y,m,0).getDate();
+  for(var i=first-1;i>=0;i--)out+='<div class="d o">'+(prev-i)+'</div>';
+  for(var k=1;k<=days;k++)out+='<div class="d'+(k===d.getDate()?' t':'')+'">'+k+'</div>';
+  var tot=first+days,rest=(7-tot%7)%7;
+  for(var j=1;j<=rest;j++)out+='<div class="d o">'+j+'</div>';
+  g.innerHTML=out;
+}
+$("wx").tabIndex=0;
+function edit(){
+  var t=prompt("Temperature °C",W.temp);if(t===null)return;
+  var c=prompt("Conditions (e.g. Sunny, Rain, Cloudy)",W.cond);if(c===null)return;
+  var hi=prompt("High °C",W.hi),lo=prompt("Low °C",W.lo);
+  var l=c.toLowerCase();
+  var ic=/storm|thunder/.test(l)?"⛈️":/rain|shower/.test(l)?"🌧️":/partly/.test(l)?"⛅":/cloud/.test(l)?"☁️":/sun|clear/.test(l)?"☀️":/wind/.test(l)?"💨":"⛅";
+  W.temp=t;W.cond=c;W.hi=hi;W.lo=lo;W.icon=ic;
+  try{localStorage.setItem("tvwx",JSON.stringify(W))}catch(e){}
+  renderWx();
+}
+$("wx").addEventListener("click",edit);
+$("wx").addEventListener("keydown",function(e){if(e.key==="Enter")edit()});
+var C=[["Sunny","☀️"],["Partly cloudy","⛅"],["Cloudy","☁️"],["Rain","🌧️"],["Storm","⛈️"],["Windy","💨"]];
+document.addEventListener("keydown",function(e){
+  var k=e.key,ch=false;
+  if(k==="ArrowUp"){W.temp=+W.temp+1;W.hi=Math.max(+W.hi,W.temp);ch=true}
+  else if(k==="ArrowDown"){W.temp=+W.temp-1;W.lo=Math.min(+W.lo,W.temp);ch=true}
+  else if(k==="ArrowRight"||k==="ArrowLeft"){var i=0;C.forEach(function(c,n){if(c[0]===W.cond)i=n});i=(i+(k==="ArrowRight"?1:C.length-1))%C.length;W.cond=C[i][0];W.icon=C[i][1];ch=true}
+  if(ch){try{localStorage.setItem("tvwx",JSON.stringify(W))}catch(x){}renderWx();e.preventDefault()}
+});
+setTimeout(function(){$("hint").style.display="none"},30000);
+renderWx();tick();cal();
+setInterval(tick,1000);
+setInterval(cal,600000);
+})();
+</script>
+</body>
+</html>
